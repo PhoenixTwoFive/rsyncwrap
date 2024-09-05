@@ -17,13 +17,13 @@ except ImportError:
     from rsyncwrap.helpers import cached_property
 
 
-def _rsync(source_paths: Sequence[Path], dest_path: Path) -> Generator[Union[str, int], None, None]:
+def _rsync(source_paths: Sequence[Path], dest_path: Path, additional_args: List[str]) -> Generator[Union[str, int], None, None]:
     """
     Runs rsync and yields lines of output.
     """
     cmd = [
         "rsync",
-        "-a",
+        *[str(arg) for arg in additional_args],
         "--progress",
         *[str(p) for p in source_paths],
         str(dest_path),
@@ -320,7 +320,7 @@ class Stats:
         )
 
 
-def rsyncwrap(source: Path, dest: Path, include_raw_output: bool = False) -> Generator[Union[int, Stats], None, None]:
+def rsyncwrap(source: Path, dest: Path, include_raw_output: bool = False, additional_args: List[str] = []) -> Generator[Union[int, Stats], None, None]:
     """
     Copy the directory "source" into the directory "dest".
 
@@ -339,6 +339,7 @@ def rsyncwrap(source: Path, dest: Path, include_raw_output: bool = False) -> Gen
     :param dest: The directory we want to copy source into.
     :param include_raw_output: A debugging helper that includes the raw output text
         from rsync with the yielded stats.
+    :param additional_args: Additional arguments to pass to rsync.
     """
     # TODO: Support multiple source paths.
     # TODO: Get rsync summary information and return stats indicating total
@@ -359,7 +360,7 @@ def rsyncwrap(source: Path, dest: Path, include_raw_output: bool = False) -> Gen
     transferred_bytes = 0
     last_stats_update: Union[None, TransferStats] = None
 
-    for line in _rsync([source], dest):
+    for line in _rsync([source], dest, additional_args):
         # The _rsync callable returns the integer exit code as the last thing.
         if isinstance(line, int):
             yield line
